@@ -1,0 +1,237 @@
+% Forcing a registered self-appellation at the response opening — conference draft
+% Compile: xelatex main.tex
+\documentclass[10pt,twocolumn]{article}
+\usepackage[a4paper,margin=2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{hyperref}
+
+\title{Forcing a Registered Self-Appellation at the Response Opening\\Reduces LLM-Agent Sycophancy and Role Confusion:\\Mechanism Design and a Large-Scale Empirical Study Across Agent Platforms}
+\author{Shiduki\\ (\href{https://github.com/teps3105}{teps3105})}
+\date{November 2026 (draft)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+When large language model (LLM) agents converse with users, two recurring low-quality
+response patterns appear: sycophancy (endorsing the user's stance without verification)
+and role confusion (addressing tool output or non-human input as if it were a conversation
+partner). We propose a zero-cost mechanism: force every agent response to begin with the
+agent's registered self-appellation (in our deployment, a fictional agent name), enforced
+by four layers of programmatic guards (pre-flight prompt injection, mid-turn interception,
+end-of-turn blocking, and a first-character floor). The first-character time cost is
+constant regardless of response length, yet it forces the model to establish its own
+identity in the first generation step instead of continuing the user's utterance. We
+measure five opening groups (self-appellation, addressing the user, first-person ``I'',
+second-person ``you'', other) and six mechanically checkable quality indicators over
+358{,}329 assistant responses across three agent platforms (Claude Code, Codex, ZCode).
+Results: the self-appellation group (9{,}255 responses) has a zero sycophancy rate; the
+association between second-person openings and sycophancy replicates across platforms
+(40.9\% on Codex, 46.6\% on ZCode); role confusion is near 100\% in the addressee and
+second-person groups. We also report post-deployment compliance, limitations, and threats
+to validity.
+\end{abstract}
+
+\section{Introduction}
+When LLMs act as interactive agents, two systematic response-quality patterns emerge.
+The first is sycophancy: the model endorses the user's claim (``Right!'', ``You're
+correct'') without performing any verification, which is known to stem from preference
+learning in RLHF \cite{sharma2024towards}. The second is less studied: role confusion---
+the agent treats tool execution results and system messages as a ``conversation partner'',
+responding to machine output in the second person (``you''), indicating that the model
+fails to locate its own identity relative to the listener during generation.
+
+Existing mitigations (prompt guidance, RLHF fine-tuning) operate inside the model and are
+hard to verify or maintain. We propose a mechanism that operates at the generation
+interface: \textbf{force the first character of every response to be the agent's
+registered self-appellation}. The intuition: opening with ``You're right'' versus opening
+with ``\textit{〈agent name〉} has verified this'' forces different stance choices---the
+former presupposes the user's stance, the latter forces the agent to start from its own
+actions. The first-character time cost is constant regardless of response length.
+
+Enforcement does not rely on model self-discipline but on four layers of programmatic
+guards (\S\ref{sec:method}), which makes the effect measurable at scale: any violation
+(user-addressing openings, English openings, sycophantic openings) is intercepted by
+code. Our contributions:
+\begin{enumerate}
+  \item a deployable, verifiable, zero-generation-cost opening-appellation mechanism
+        with a four-layer guard implementation;
+  \item a grouped measurement framework with six mechanical indicators over 358{,}329
+        real conversations across three platforms;
+  \item empirical associations between opening groups and sycophancy/role confusion:
+        zero sycophancy in the self-appellation group, and a cross-platform replication
+        of the second-person/sycophancy association.
+\end{enumerate}
+
+\section{Related Work}
+\textbf{LLM sycophancy.} Sharma et al.\ \cite{sharma2024towards} systematically study
+sycophancy in RLHF models, showing that agreeing with the user is a rewarded behavior.
+Mitigations include system prompts, data augmentation, and RLAIF. Our work differs: we
+do not improve the model internally but force a different opening stance at the
+generation interface, with programmatic enforcement. \textbf{Agent self-location.}
+System prompts set personas (``you are assistant X''), but self-location during
+generation is unconstrained. To our knowledge, forcing the first character of responses
+to a registered self-appellation with programmatic verification has not been reported.
+\textbf{Chinese response quality.} Simplified-character leakage and telegraphic phrasing
+in agent settings have been reported without mechanical indicators; we integrate them
+into the same measurement framework.
+
+\section{Method}\label{sec:method}
+\subsection{Mechanism}
+The mechanism consists of four guard layers, all operating on the agent host's hook
+interface (the extension point where the host runs user-defined programs around tool
+calls and turn ends; supported by Claude Code, Codex, and ZCode):
+\begin{enumerate}
+  \item \textbf{Pre-flight injection} (UserPromptSubmit): inject a one-line rule hint
+        when the user sends input;
+  \item \textbf{Mid-turn interception} (PreToolUse): when narration addressed to the
+        user is detected, deny the next tool call to force a rewrite;
+  \item \textbf{End-of-turn blocking} (Stop): at turn end, inspect visible responses---
+        six violation classes (user-addressing openings, English openings, sycophantic
+        openings, jargon, simplified glyphs, typos) block the stop and require fixes;
+  \item \textbf{First-character floor}: starting with the agent name forces the response
+        to begin in Chinese---English cannot start (a side benefit).
+\end{enumerate}
+A verification gate exempts sycophancy blocks: any tool call in the same turn (fact
+checking) allows agreement openings---the mechanism opposes unverified endorsement,
+not agreement itself.
+
+\subsection{Measurement Framework}
+We scan the complete conversation records of three platforms: the SQLite conversation
+databases of Claude Code and ZCode, and Codex's thread-history database---358{,}329
+assistant responses in total. Each response's first non-empty text block is stripped of
+Markdown prefixes and grouped into five groups: \textbf{self-appellation} (agent-name
+opening), \textbf{addressee} (user-addressing), \textbf{first person} (``I''-opening),
+\textbf{second person} (``you''-opening), \textbf{other}.
+
+All six indicators are mechanically checkable (\S\ref{sec:metrics}). The classification
+criteria and the online guards share the same code (the same module), avoiding drift
+between measurement and enforcement criteria.
+
+\section{Indicator Definitions}\label{sec:metrics}
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{3.2cm}p{4.6cm}p{1.6cm}}
+\toprule
+Indicator & Operational definition & Strength \\
+\midrule
+Sycophantic opening & First sentence hits an agreement-phrase list with zero tool calls
+in the turn & Weak \\
+Role confusion & Previous input is a tool result and the response opens addressing the
+user & Strong \\
+Mean length & Average response body characters & Descriptive \\
+Simplified glyphs & Original glyphs that vanish under s2t conversion (curated list) & Strong \\
+English opening & First non-empty line starts with an ASCII letter & Strong \\
+Pronoun density & ``it/this/that'' occurrences per 1{,}000 characters & Weak \\
+\bottomrule
+\end{tabular}
+\caption{Operational definitions and evidence strength. Weak indicators can be triggered
+by harmless usage; strong indicators are almost always problems in agent contexts.}
+\label{tab:metrics}
+\end{table}
+
+The core limitation of indicator strength: the sycophantic-opening criterion (opening
+endorsement + zero verification) misses mid-sentence sycophancy and verified-but-
+deferential tone---it measures the \textbf{surface layer} of sycophancy only. The role
+confusion rate has virtually no false positives: addressing tool output as ``you'' has
+no legitimate use in agent contexts.
+
+\section{Results}
+% Data: 2026-11-10, three-platform full corpus (Claude JSONL 37492, Codex thread_history
+% 76170, ZCode sqlite 244667 responses)
+\subsection{Opening-Group Distribution}
+The three platforms total 358{,}329 assistant responses. The distribution is highly
+uneven: self-appellation 9{,}255, addressee 9{,}390, ``I'' 14{,}445, ``you'' 1{,}342,
+other 318{,}897 (mostly pre-deployment).
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabular}{llrrrrrr}
+\toprule
+Platform & Group & N & Chars & Syc.\% & Conf.\% & Pron.\% & Eng.\% \\
+\midrule
+Claude & Self-appel. & 5672 & 103 & 0.0 & 0.0 & 4.0 & 0.0 \\
+Claude & Addressee & 3116 & 382 & 3.7 & 100 & 9.3 & 0.0 \\
+Claude & I & 119 & 838 & 0.0 & 0.0 & 100 & 0.0 \\
+Claude & You & 3 & 1309 & 0.0 & -- & 100 & 0.0 \\
+Claude & Other & 28582 & 204 & 0.0 & 0.0 & 5.8 & 15.9 \\
+\midrule
+Codex & Self-appel. & 3569 & 226 & 0.0 & 0.0 & 0.3 & 0.0 \\
+Codex & Addressee & 5647 & 180 & 1.1 & 100 & 0.8 & 0.0 \\
+Codex & I & 9710 & 110 & 0.0 & 0.0 & 99.8 & 0.0 \\
+Codex & You & 931 & 241 & 40.9 & 100 & 100 & 0.0 \\
+Codex & Other & 56313 & 266 & 0.4 & 0.0 & 40.7 & 2.0 \\
+\midrule
+ZCode & Self-appel. & 14 & 924 & 0.0 & 0.0 & 21.4 & 0.0 \\
+ZCode & Addressee & 6627 & 1699 & 0.6 & 100 & 73.3 & 0.4 \\
+ZCode & I & 4616 & 1855 & 0.0 & 0.0 & 100 & 0.2 \\
+ZCode & You & 408 & 588 & 46.6 & 100 & 100 & 0.0 \\
+ZCode & Other & 233002 & 1584 & 0.0 & 0.0 & 25.2 & 37.3 \\
+\bottomrule
+\end{tabular}
+\caption{Six indicators over five groups on three platforms. Conf.\ = addressing the
+user right after a tool result (denominator: responses in the group whose previous input
+was a tool result); the Claude ``you'' group has only 3 responses, insufficient for the
+confusion column.}
+\label{tab:main}
+\end{table}
+
+\subsection{Sycophancy and Opening Groups}
+The second-person opening/sycophancy association replicates across platforms: the
+``you'' group's sycophancy rate is 40.9\% on Codex (931 responses) and 46.6\% on ZCode
+(408 responses). Addressee-group rates are markedly lower (Claude 3.7\%, Codex 1.1\%,
+ZCode 0.6\%). The self-appellation group totals 9{,}255 responses across platforms with
+a zero sycophancy rate. This matches the mechanism hypothesis: opening with the user's
+appellation places the model in a ``responding to you'' position where agreement is the
+natural continuation; opening with its own appellation forces the response to start
+from the agent's own action.
+
+\subsection{Role Confusion}
+Role confusion is near 100\% in the addressee and ``you'' groups: Codex addressee
+4{,}373/4{,}373, you-group 195/195; ZCode addressee 786/786, you-group 31/31. Both forms
+of confusion (addressing the user and addressing tool output) share one opening habit---
+when generation fails to locate the listener, the model says ``you'' to anyone. The
+self-appellation and ``I'' groups show zero confusion.
+
+\subsection{Response Length}
+The length ratio between ``I''-openings and self-appellation openings is inconsistent
+across platforms: 8.1$\times$ on Claude, 2.0$\times$ on ZCode, and an inverted
+0.49$\times$ on Codex. Length is dominated by task type; we do not claim it as a
+mechanism effect.
+
+\section{Threats to Validity}
+\textbf{Construct validity.} The sycophantic-opening rate is a surface-level proxy;
+``no opening endorsement'' does not imply ``no content pandering''.
+\textbf{Internal validity.} Groups are determined by the opening character, which the
+mechanism itself enforces---post-deployment self-appellation responses are a direct
+product of the mechanism, and their quality indicators are also shaped by other guards
+(simplified glyphs, jargon, sentence length); attribution to the appellation alone is
+not possible. \textbf{External validity.} The sample comes from a single user's (the
+researcher's) agent workload; the conversation distribution differs from typical users.
+The three platforms share the same global instructions and guards; between-platform
+differences reflect model and interface differences, not prompt differences.
+\textbf{Statistical power.} With large samples, proportional differences are almost
+certainly significant; we therefore report effect sizes and raw distributions and do
+not use p-values as primary evidence.
+
+\section{Conclusion and Future Work}
+Forcing a self-appellation opening is an interface-layer mechanism with zero cost and
+programmatic verifiability. Current evidence shows systematic associations between
+opening groups and sycophancy/role confusion. The mechanism's causal contribution
+requires pre/post-deployment comparisons and ablations (injection only, blocking only,
+all four layers), left as future work.
+
+\begin{thebibliography}{1}
+\bibitem{sharma2024towards}
+M.~Sharma, M.~Tong, T.~Korbak, D.~Duvenaud, A.~Askell, S.~R.~Bowman, et al.
+\newblock Towards understanding sycophancy in language models.
+\newblock In \emph{ICLR}, 2024.
+\end{thebibliography}
+
+\end{document}
