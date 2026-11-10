@@ -89,6 +89,15 @@ LLM 作為互動式代理（agent）時，其回應品質問題呈現三個系�
 機制不反對同意，反對的是未查證的表態。防禦性輸出目前只有測量沒有執法：防禦語清單
 隨復現腳本發布，是下一輪守衛校準 warn 層的基準。
 
+守衛層之上另有硬約束層：本地注入代理（prefill proxy）。三大 CLI 平台目前查無
+原生 prefill 入口（2026-11 一手證據：Claude Code changelog、Codex App Server、
+Anthropic SDK 都沒有 assistant prefill 參數；Messages API 的 assistant 前綴本身
+依模型而異），代理攔 \texttt{/v1/messages} 流量，在訊息尾端注入
+\texttt{\{role: assistant, content: 代理名\}}，模型被強制從稱謂接續。
+prefill 是上下文注入：模型生成的第一個 token 是接續內容，前綴顯示仍由 CLI 渲染。
+注入層對 context 壓縮免疫。事前注入、攔截與擋停屬軟機制，實證會失敗或可繞過；
+硬約束層作用在 API 流量層，軟機制的撤除以硬約束層驗收成立為前提。
+
 \subsection{測量框架}
 我們掃描三平台的全部對話紀錄：Claude Code 與 ZCode 的 SQLite 對話庫、Codex 的
 thread history 資料庫，共 358{,}362 則 assistant 回應。每則回應取第一個非空文字區塊，

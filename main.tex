@@ -121,6 +121,19 @@ not agreement itself. Defensive hedging currently has measurement but no enforce
 the hedge list ships with the reproduction script as the calibration baseline for the
 next guard iteration.
 
+Above the guard layers sits a hard-constraint layer: a local prefill proxy. The three
+major CLI platforms currently expose no native prefill entry point (first-hand evidence
+from 2026-11: the Claude Code changelog, the Codex App Server, and the Anthropic SDK
+provide no assistant-prefill parameter; the assistant prefix in the Messages API itself
+is model-dependent). The proxy intercepts the CLIs' \texttt{/v1/messages} traffic and
+appends \texttt{\{role: assistant, content: agent-name\}} to the end of the message
+list, forcing the model to continue from the appellation. Prefill is context injection:
+the model's first generated token is a continuation, and prefix rendering on screen
+remains the CLI's job. The injection layer is immune to context compaction. Pre-flight
+injection, interception, and end-of-turn blocking are soft mechanisms; they demonstrably
+fail or can be bypassed. The hard-constraint layer operates at the API-traffic layer,
+and soft-mechanism removal is conditioned on the hard layer passing acceptance.
+
 \subsection{Measurement Framework}
 We scan the complete conversation records of three platforms: the SQLite conversation
 databases of Claude Code and ZCode, and Codex's thread-history database---358{,}362
