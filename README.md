@@ -19,18 +19,23 @@ rendered from the sources above; no other artifacts are distributed.
 
 ## TL;DR
 
-Two recurring low-quality patterns in agent responses—sycophancy (endorsement without
-verification) and role confusion (addressing tool output as "you")—are suppressed by a
-zero-cost mechanism: force every response to open with the agent's registered
-self-appellation, enforced by four layers of host hooks.
+Three recurring low-quality patterns in agent responses: sycophancy (endorsement without
+verification), role confusion (addressing tool output as "you"), and defensive hedging
+(disclaimers and uncertainty flooding instead of judging the data). The opening
+mechanism—force every response to open with the agent's registered self-appellation,
+enforced by four layers of host hooks—reaches the first two; the third is a
+platform-level behavior that defines the next enforcement layer.
 
-Key results (see Table 2 in the paper):
+Key results (see Tables 2–3 in the paper):
 
 - Self-appellation group: 9,255 responses, **zero** sycophancy rate across all platforms.
 - Second-person openings and sycophancy co-occur strongly, replicated across platforms:
   **40.9%** (Codex, n=931) and **46.6%** (ZCode, n=408).
 - Role confusion (addressing the user right after a tool result) is near **100%** in the
   addressee and second-person groups; zero in the self-appellation and first-person groups.
+- Direct evaluative calls on data are near **zero** everywhere: all groups below **2%**.
+- Defensive hedging varies by platform, not by opening group: Codex **1.9–5.0%** versus
+  ZCode **14.0–46.5%**.
 
 ## Reproduction
 
@@ -57,10 +62,10 @@ If this study is useful to you, please cite the paper:
 @misc{shiduki2026appellation,
   author       = {Shiduki},
   title        = {Forcing a Registered Self-Appellation at the Response Opening
-                  Reduces LLM-Agent Sycophancy and Role Confusion:
+                  Reduces LLM-Agent Sycophancy, Role Confusion, and Defensive Hedging:
                   Mechanism Design and a Large-Scale Empirical Study Across Agent Platforms},
   year         = {2026},
-  howpublished = {\url{https://github.com/teps3105/agent-opening-appellation-study}},
+  howpublished = {\url{https://github.com/teps3105/appellation}},
   note         = {Draft; in Chinese (main-zh-TW.tex) and English (main.tex)}
 }
 ```

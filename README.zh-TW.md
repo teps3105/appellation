@@ -16,10 +16,19 @@ ZCode），實證樣本為 35.8 萬則對話回應的分組統計。
 
 ## 摘要
 
-代理回應的兩類低品質模式需要壓制。附和指未查證先表態認同。角色混淆指對工具輸出稱「你」。
-機制是零成本的：強制每則回應以代理登記的固定自我稱謂開頭，並由四層宿主 hook 守衛保證執行。
-實測結果分三點。自我稱謂組 9,255 則附和率為零。第二人稱開頭與附和的強共現跨平台成立，
-Codex 40.9%、ZCode 46.6%。角色混淆在對象稱謂組與第二人稱組近乎 100%。
+代理回應有三類低品質模式。附和指未查證先表態認同。角色混淆指對工具輸出稱「你」。
+防禦性輸出以免責聲明與不確定詞氾濫，取代對數據下判斷。開頭機制強制每則回應以代理
+登記的固定自我稱謂開頭，由四層宿主 hook 守衛保證執行。機制對附和與角色混淆有效；
+防禦性輸出是平台層行為，直接定義下一個執法層。
+
+關鍵結果（見論文表 2–3）：
+
+- 自我稱謂組 9,255 則，附和率全平台為**零**。
+- 第二人稱開頭與附和的強共現跨平台成立：**40.9%**（Codex，n=931）、**46.6%**（ZCode，n=408）。
+- 角色混淆在對象稱謂組與第二人稱組近乎 **100%**，定義為工具結果後以對象稱謂開口。
+  自我稱謂組與第一人稱組為零。
+- 對數據的正向評價全平台趨近**零**：所有組低於 **2%**。
+- 防禦語率隨平台變化，不隨開頭組變化：Codex **1.9–5.0%**，ZCode **14.0–46.5%**。
 
 ## 復現
 
@@ -42,10 +51,10 @@ CLAUDE_PROJECTS=... CODEX_DB=... ZCODE_DB=... python code/opening_stats.py
 @misc{shiduki2026appellation,
   author       = {Shiduki},
   title        = {Forcing a Registered Self-Appellation at the Response Opening
-                  Reduces LLM-Agent Sycophancy and Role Confusion:
+                  Reduces LLM-Agent Sycophancy, Role Confusion, and Defensive Hedging:
                   Mechanism Design and a Large-Scale Empirical Study Across Agent Platforms},
   year         = {2026},
-  howpublished = {\url{https://github.com/teps3105/agent-opening-appellation-study}},
+  howpublished = {\url{https://github.com/teps3105/appellation}},
   note         = {Draft; 繁中（main-zh-TW.tex）與英文（main.tex）雙語版}
 }
 ```

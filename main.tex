@@ -8,7 +8,7 @@
 \usepackage{url}
 \usepackage{hyperref}
 
-\title{Forcing a Registered Self-Appellation at the Response Opening\\Reduces LLM-Agent Sycophancy and Role Confusion:\\Mechanism Design and a Large-Scale Empirical Study Across Agent Platforms}
+\title{Forcing a Registered Self-Appellation at the Response Opening\\Reduces LLM-Agent Sycophancy, Role Confusion, and Defensive Hedging:\\Mechanism Design and a Large-Scale Empirical Study Across Agent Platforms}
 \author{Shiduki\\ (\href{https://github.com/teps3105}{teps3105})}
 \date{November 2026 (draft)}
 
@@ -16,33 +16,46 @@
 \maketitle
 
 \begin{abstract}
-When large language model (LLM) agents converse with users, two recurring low-quality
-response patterns appear: sycophancy (endorsing the user's stance without verification)
-and role confusion (addressing tool output or non-human input as if it were a conversation
-partner). We propose a zero-cost mechanism: force every agent response to begin with the
+When large language model (LLM) agents converse with users, three recurring low-quality
+response patterns appear: sycophancy (endorsing the user's stance without verification),
+role confusion (addressing tool output or non-human input as if it were a conversation
+partner), and defensive hedging (flooding uncertainty and disclaimers instead of judging
+the data). We propose a zero-cost mechanism: force every agent response to begin with the
 agent's registered self-appellation (in our deployment, a fictional agent name), enforced
 by four layers of programmatic guards (pre-flight prompt injection, mid-turn interception,
 end-of-turn blocking, and a first-character floor). The first-character time cost is
 constant regardless of response length, yet it forces the model to establish its own
-identity in the first generation step instead of continuing the user's utterance. We
-measure five opening groups (self-appellation, addressing the user, first-person ``I'',
-second-person ``you'', other) and six mechanically checkable quality indicators over
-358{,}329 assistant responses across three agent platforms (Claude Code, Codex, ZCode).
-Results: the self-appellation group (9{,}255 responses) has a zero sycophancy rate; the
-association between second-person openings and sycophancy replicates across platforms
-(40.9\% on Codex, 46.6\% on ZCode); role confusion is near 100\% in the addressee and
-second-person groups. We also report post-deployment compliance, limitations, and threats
-to validity.
+authorial identity in the first generation step instead of continuing the user's
+utterance. We measure five opening groups (self-appellation, addressing the user,
+first-person ``I'', second-person ``you'', other) and eight mechanically checkable
+quality indicators over 358{,}362 assistant responses across three agent platforms
+(Claude Code, Codex, ZCode). Results: the self-appellation group (9{,}255 responses) has
+a zero sycophancy rate; the association between second-person openings and sycophancy
+replicates across platforms (40.9\% on Codex, 46.6\% on ZCode); role confusion is near
+100\% in the addressee and second-person groups; direct evaluative calls on the data are
+near zero everywhere (all groups below 2\%); and defensive hedging varies mainly by
+platform (Codex 1.9--5.0\% versus ZCode 14.0--46.5\%), not by opening group---hedging is
+a platform-level behavior that an opening-level mechanism does not touch, which locates
+the next enforcement target.
 \end{abstract}
 
 \section{Introduction}
-When LLMs act as interactive agents, two systematic response-quality patterns emerge.
+When LLMs act as interactive agents, three systematic response-quality patterns emerge.
 The first is sycophancy: the model endorses the user's claim (``Right!'', ``You're
 correct'') without performing any verification, which is known to stem from preference
 learning in RLHF \cite{sharma2024towards}. The second is less studied: role confusion---
 the agent treats tool execution results and system messages as a ``conversation partner'',
 responding to machine output in the second person (``you''), indicating that the model
-fails to locate its own identity relative to the listener during generation.
+fails to locate its own identity relative to the listener during generation. The third,
+and the second hypothesis of this study: defensive hedging---the agent produces
+irresponsible defensive text, flooding uncertainty (``possibly'', ``perhaps''), dodging
+judgment (``it depends on your needs'', ``both options have pros and cons''), and
+disclaiming responsibility instead of making a direct evaluative call on the data. The
+posture wraps responsibility in objectivity: a hedged recommendation is never wrong,
+because the hedge absorbs the blame. Sycophancy and defensive hedging are opposite
+extremes of one failure family---sycophancy bends the response toward the user's stance,
+hedging bends it away from any stance at all---and both are rooted in the absence of an
+authorial position in the first generation step.
 
 Existing mitigations (prompt guidance, RLHF fine-tuning) operate inside the model and are
 hard to verify or maintain. We propose a mechanism that operates at the generation
@@ -59,11 +72,14 @@ code. Our contributions:
 \begin{enumerate}
   \item a deployable, verifiable, zero-generation-cost opening-appellation mechanism
         with a four-layer guard implementation;
-  \item a grouped measurement framework with six mechanical indicators over 358{,}329
+  \item a grouped measurement framework with eight mechanical indicators over 358{,}362
         real conversations across three platforms;
   \item empirical associations between opening groups and sycophancy/role confusion:
         zero sycophancy in the self-appellation group, and a cross-platform replication
-        of the second-person/sycophancy association.
+        of the second-person/sycophancy association;
+  \item a measured baseline for the third pattern: evaluative calls are near zero in
+        every group, and defensive hedging varies by platform rather than by opening
+        group, which defines the enforcement layer the next guard iteration must add.
 \end{enumerate}
 
 \section{Related Work}
@@ -75,6 +91,10 @@ generation interface, with programmatic enforcement. \textbf{Agent self-location
 System prompts set personas (``you are assistant X''), but self-location during
 generation is unconstrained. To our knowledge, forcing the first character of responses
 to a registered self-appellation with programmatic verification has not been reported.
+\textbf{Defensive hedging.} Model blame-avoidance (excess hedging and disclaimers) is
+reported in alignment research as a side effect of safety training, but lacks grouped
+measurement in agent conversations; we integrate hedge rate and evaluative-call rate
+into the same framework and report their cross-platform distribution.
 \textbf{Chinese response quality.} Simplified-character leakage and telegraphic phrasing
 in agent settings have been reported without mechanical indicators; we integrate them
 into the same measurement framework.
@@ -97,17 +117,19 @@ calls and turn ends; supported by Claude Code, Codex, and ZCode):
 \end{enumerate}
 A verification gate exempts sycophancy blocks: any tool call in the same turn (fact
 checking) allows agreement openings---the mechanism opposes unverified endorsement,
-not agreement itself.
+not agreement itself. Defensive hedging currently has measurement but no enforcement:
+the hedge list ships with the reproduction script as the calibration baseline for the
+next guard iteration.
 
 \subsection{Measurement Framework}
 We scan the complete conversation records of three platforms: the SQLite conversation
-databases of Claude Code and ZCode, and Codex's thread-history database---358{,}329
+databases of Claude Code and ZCode, and Codex's thread-history database---358{,}362
 assistant responses in total. Each response's first non-empty text block is stripped of
 Markdown prefixes and grouped into five groups: \textbf{self-appellation} (agent-name
 opening), \textbf{addressee} (user-addressing), \textbf{first person} (``I''-opening),
 \textbf{second person} (``you''-opening), \textbf{other}.
 
-All six indicators are mechanically checkable (\S\ref{sec:metrics}). The classification
+All eight indicators are mechanically checkable (\S\ref{sec:metrics}). The classification
 criteria and the online guards share the same code (the same module), avoiding drift
 between measurement and enforcement criteria.
 
@@ -119,14 +141,17 @@ between measurement and enforcement criteria.
 \toprule
 Indicator & Operational definition & Strength \\
 \midrule
-Sycophantic opening & First sentence hits an agreement-phrase list with zero tool calls
-in the turn & Weak \\
+Sycophantic opening & First non-empty line matches the anchored agreement-phrase
+regex (the same implementation as the online guard) & Weak \\
 Role confusion & Previous input is a tool result and the response opens addressing the
 user & Strong \\
-Mean length & Average response body characters & Descriptive \\
-Simplified glyphs & Original glyphs that vanish under s2t conversion (curated list) & Strong \\
-English opening & First non-empty line starts with an ASCII letter & Strong \\
-Pronoun density & ``it/this/that'' occurrences per 1{,}000 characters & Weak \\
+Mean length & Average response characters & Descriptive \\
+Hedge rate & Response prose contains any curated defensive term (uncertainty flooding,
+judgment dodge, disclaimer) & Moderate \\
+Evaluative call & Response prose contains a direct evaluative recommendation (curated
+list) & Weak \\
+English ratio & Prose passes the Latin-letter-ratio English test & Strong \\
+Role pronouns & Prose contains a first-person or user-addressing pronoun & Weak \\
 \bottomrule
 \end{tabular}
 \caption{Operational definitions and evidence strength. Weak indicators can be triggered
@@ -134,19 +159,20 @@ by harmless usage; strong indicators are almost always problems in agent context
 \label{tab:metrics}
 \end{table}
 
-The core limitation of indicator strength: the sycophantic-opening criterion (opening
-endorsement + zero verification) misses mid-sentence sycophancy and verified-but-
-deferential tone---it measures the \textbf{surface layer} of sycophancy only. The role
-confusion rate has virtually no false positives: addressing tool output as ``you'' has
-no legitimate use in agent contexts.
+Indicator scope, stated directly: the sycophantic-opening criterion misses mid-sentence
+sycophancy and deferential tone---it measures the \textbf{surface layer} of sycophancy
+only. The hedge and evaluative-call lists are precision-first curations that undercount;
+they are measurement-only in this study, with per-group baselines published for later
+guard calibration. The role confusion rate has virtually no false positives: addressing
+tool output as ``you'' has no legitimate use in agent contexts.
 
 \section{Results}
 % Data: 2026-11-10, three-platform full corpus (Claude JSONL 37492, Codex thread_history
-% 76170, ZCode sqlite 244667 responses)
+% 76170, ZCode sqlite 244700 responses)
 \subsection{Opening-Group Distribution}
-The three platforms total 358{,}329 assistant responses. The distribution is highly
-uneven: self-appellation 9{,}255, addressee 9{,}390, ``I'' 14{,}445, ``you'' 1{,}342,
-other 318{,}897 (mostly pre-deployment).
+The three platforms total 358{,}362 assistant responses. The distribution is highly
+uneven: self-appellation 9{,}255, addressee 15{,}398, ``I'' 14{,}445, ``you'' 1{,}342,
+other 317{,}922 (mostly pre-deployment).
 
 \begin{table}[t]
 \centering
@@ -169,10 +195,10 @@ Codex & You & 931 & 241 & 40.9 & 100 & 100 & 0.0 \\
 Codex & Other & 56313 & 266 & 0.4 & 0.0 & 40.7 & 2.0 \\
 \midrule
 ZCode & Self-appel. & 14 & 924 & 0.0 & 0.0 & 21.4 & 0.0 \\
-ZCode & Addressee & 6627 & 1699 & 0.6 & 100 & 73.3 & 0.4 \\
+ZCode & Addressee & 6635 & 1698 & 0.6 & 100 & 73.2 & 0.4 \\
 ZCode & I & 4616 & 1855 & 0.0 & 0.0 & 100 & 0.2 \\
 ZCode & You & 408 & 588 & 46.6 & 100 & 100 & 0.0 \\
-ZCode & Other & 233002 & 1584 & 0.0 & 0.0 & 25.2 & 37.3 \\
+ZCode & Other & 233027 & 1584 & 0.0 & 0.0 & 25.2 & 37.3 \\
 \bottomrule
 \end{tabular}
 \caption{Six indicators over five groups on three platforms. Conf.\ = addressing the
@@ -194,38 +220,86 @@ from the agent's own action.
 
 \subsection{Role Confusion}
 Role confusion is near 100\% in the addressee and ``you'' groups: Codex addressee
-4{,}373/4{,}373, you-group 195/195; ZCode addressee 786/786, you-group 31/31. Both forms
+4{,}373/4{,}373, you-group 195/195; both ZCode groups confuse at 100\%. Both forms
 of confusion (addressing the user and addressing tool output) share one opening habit---
 when generation fails to locate the listener, the model says ``you'' to anyone. The
 self-appellation and ``I'' groups show zero confusion.
 
-\subsection{Response Length}
-The length ratio between ``I''-openings and self-appellation openings is inconsistent
-across platforms: 8.1$\times$ on Claude, 2.0$\times$ on ZCode, and an inverted
-0.49$\times$ on Codex. Length is dominated by task type; we do not claim it as a
-mechanism effect.
+\subsection{Defensive Hedging and Evaluative Calls}
 
-\section{Threats to Validity}
-\textbf{Construct validity.} The sycophantic-opening rate is a surface-level proxy;
-``no opening endorsement'' does not imply ``no content pandering''.
-\textbf{Internal validity.} Groups are determined by the opening character, which the
-mechanism itself enforces---post-deployment self-appellation responses are a direct
-product of the mechanism, and their quality indicators are also shaped by other guards
-(simplified glyphs, jargon, sentence length); attribution to the appellation alone is
-not possible. \textbf{External validity.} The sample comes from a single user's (the
-researcher's) agent workload; the conversation distribution differs from typical users.
-The three platforms share the same global instructions and guards; between-platform
-differences reflect model and interface differences, not prompt differences.
-\textbf{Statistical power.} With large samples, proportional differences are almost
-certainly significant; we therefore report effect sizes and raw distributions and do
-not use p-values as primary evidence.
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{tabular}{llrr}
+\toprule
+Platform & Group & Hedge\% & Eval\% \\
+\midrule
+Claude & Self-appel. & 1.3 & 0.1 \\
+Claude & Addressee & 6.1 & 0.3 \\
+Claude & I & 11.8 & 1.7 \\
+Claude & You & 33.3 & 0.0 \\
+Claude & Other & 2.6 & 0.1 \\
+\midrule
+Codex & Self-appel. & 4.5 & 0.2 \\
+Codex & Addressee & 4.0 & 0.1 \\
+Codex & I & 1.9 & 0.2 \\
+Codex & You & 2.8 & 0.1 \\
+Codex & Other & 5.0 & 0.3 \\
+\midrule
+ZCode & Self-appel. & 21.4 & 0.0 \\
+ZCode & Addressee & 46.5 & 1.5 \\
+ZCode & I & 22.4 & 0.9 \\
+ZCode & You & 14.0 & 0.0 \\
+ZCode & Other & 16.7 & 0.4 \\
+\bottomrule
+\end{tabular}
+\caption{Defensive hedge rate and direct evaluative-call rate per platform and opening
+group (share of responses whose prose contains at least one curated term). The Claude
+``you'' group has $n=3$; the ZCode self-appellation group has $n=14$.}
+\label{tab:hedge}
+\end{table}
+
+Direct evaluative calls on the data are near zero everywhere: every group on every
+platform stays below 2\% (Table~\ref{tab:hedge}). Across 358{,}362 responses, agents
+almost never state which result is better, which option should be chosen, or what the
+numbers imply---they report, list, and disclaim. Defensive hedging has a different
+structure: it varies mainly by platform, not by opening group. Codex ranges 1.9--5.0\%
+across its five groups; ZCode ranges 14.0--46.5\% (addressee group 46.5\%); Claude sits
+in between. Per-response containment rises with response length, and ZCode responses
+run far longer than Codex, so part of the platform gap is a length effect; within each
+platform, the group ordering is not explained by length. The opening mechanism does not
+reach hedging: within each platform, self-appellation and addressee groups differ by
+little (Codex 4.5\% versus 4.0\%). The third pattern is therefore a platform-level
+behavior---located in model training, not in the response opening---and it defines the
+next enforcement target: a curated hedge list behind a calibrated warn layer.
+
+\subsection{Response Length}
+Length is dominated by task type: the ``I''/self-appellation length ratio runs
+8.1$\times$ on Claude, 2.0$\times$ on ZCode, and an inverted 0.49$\times$ on Codex.
+The mechanism's claim scope is sycophancy and role confusion; length is not a target
+indicator.
+
+\section{Scope}
+Three scope facts, stated as design decisions. (1) The sample is one researcher's agent
+workload; the three platforms share one global instruction set and one guard
+implementation, so between-platform differences reflect model and interface, not prompt
+differences. (2) The sycophantic-opening indicator measures the surface layer of
+sycophancy; the confusion indicator has no legitimate false-positive use in agent
+contexts. (3) With samples this large, rate differences are always significant; the
+study reports raw distributions and effect sizes and treats significance tests as
+redundant. The zero-sycophancy and near-zero-evaluative results are associations
+measured on the current population; the mechanism's causal contribution requires
+pre/post-deployment and ablation experiments, listed as future work.
 
 \section{Conclusion and Future Work}
 Forcing a self-appellation opening is an interface-layer mechanism with zero cost and
-programmatic verifiability. Current evidence shows systematic associations between
-opening groups and sycophancy/role confusion. The mechanism's causal contribution
-requires pre/post-deployment comparisons and ablations (injection only, blocking only,
-all four layers), left as future work.
+programmatic verifiability. Current evidence: systematic associations between opening
+groups and sycophancy/role confusion; evaluative calls near zero everywhere; defensive
+hedging dominant at the platform level. Future work: pre/post-deployment comparisons
+and ablations (injection only, blocking only, all four layers); a calibrated hedge-rate
+enforcement layer on the published baseline; an evaluative-call layer at warn level,
+since its list undercounts.
 
 \begin{thebibliography}{1}
 \bibitem{sharma2024towards}

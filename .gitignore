@@ -1,0 +1,9 @@
+# Scratch and intermediates only; never part of the public repo.
+.tmp/
+
+# LaTeX build products
+*.aux
+*.log
+*.out
+*.synctex.gz
+*.pdf
