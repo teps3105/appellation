@@ -62,3 +62,5 @@ CLAUDE_PROJECTS=... CODEX_DB=... ZCODE_DB=... python code/opening_stats.py
 ## 授權
 
 論文文字以 CC BY 4.0 釋出；復現腳本以 MIT 釋出。
+
+細節文件由 hikari monorepo docs/7-實證/ 管理。
