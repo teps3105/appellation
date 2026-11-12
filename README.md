@@ -73,3 +73,9 @@ If this study is useful to you, please cite the paper:
 ## License
 
 CC BY 4.0 for the paper text; the reproduction script is MIT.
+
+## Docs
+
+| Doc | Content |
+|---|---|
+| [1.1 Response-opening appellation quality study](docs/1-%E5%AF%A6%E8%AD%89/1.1-%E5%9B%9E%E6%87%89%E9%96%8B%E9%A0%AD%E7%A8%B1%E8%AC%82%E7%9A%84%E8%BC%B8%E5%87%BA%E5%93%81%E8%B3%AA%E5%AF%A6%E8%AD%89.md) |繁中實證紀錄：假說、分組統計與對照設計 |
