@@ -74,4 +74,3 @@ If this study is useful to you, please cite the paper:
 
 CC BY 4.0 for the paper text; the reproduction script is MIT.
 
-Detailed documents are managed by the hikari monorepo under `docs/7-實證/`.
